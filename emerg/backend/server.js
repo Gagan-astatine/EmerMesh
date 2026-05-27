@@ -15,22 +15,28 @@ const io = new Server(server, {
 });
 
 app.use(cors());
-app.use(express.json());
-app.get("/health", (req, res) => res.json({ status: "ok" }));
-const rooms = new Map(); // roomId -> Set of socket IDs
+app.use(express.json());
+
+app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+const rooms = new Map();
 
 io.on("connection", (socket) => {
-    console.log("Peer connected:", socket.id);
+    console.log("Peer connected:", socket.id);
+
     socket.on("join-room", (roomId) => {
         socket.join(roomId);
         if (!rooms.has(roomId)) rooms.set(roomId, new Set());
-        rooms.get(roomId).add(socket.id);
+        rooms.get(roomId).add(socket.id);
+
         const peers = [...rooms.get(roomId)].filter((id) => id !== socket.id);
-        socket.emit("existing-peers", peers);
+        socket.emit("existing-peers", peers);
+
         socket.to(roomId).emit("peer-joined", socket.id);
 
         console.log(`Socket ${socket.id} joined room ${roomId}`);
-    });
+    });
+
     socket.on("relay-signal", ({ targetId, signal }) => {
         io.to(targetId).emit("signal", { fromId: socket.id, signal });
     });
