@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { io } from 'socket.io-client'
 
-const SIGNAL_SERVER = process.env.REACT_APP_SIGNAL_SERVER || 'http://localhost:4000'
+const SIGNAL_SERVER = process.env.REACT_APP_SIGNAL_SERVER || 'https://emermesh.onrender.com'
 const ICE_SERVERS = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -15,7 +15,8 @@ export function useMesh(roomId) {
     const channelsRef = useRef({})        // Map of peerId -> RTCDataChannel
     const [connectedPeers, setConnectedPeers] = useState([])
     const [messages, setMessages] = useState([])
-    const [meshReady, setMeshReady] = useState(false)
+    const [meshReady, setMeshReady] = useState(false)
+
     useEffect(() => {
         if (!roomId) return
         try {
@@ -26,7 +27,8 @@ export function useMesh(roomId) {
         } catch (e) {
             console.error('Failed to load cached messages:', e)
         }
-    }, [roomId])
+    }, [roomId])
+
     const updateMessages = useCallback((newMessagesCallback) => {
         setMessages(prev => {
             const updated = newMessagesCallback(prev)
@@ -37,20 +39,24 @@ export function useMesh(roomId) {
             }
             return updated
         })
-    }, [roomId])
+    }, [roomId])
+
     const addPeer = (peerId) => {
         setConnectedPeers(prev =>
             prev.includes(peerId) ? prev : [...prev, peerId]
         )
-    }
+    }
+
     const removePeer = (peerId) => {
         setConnectedPeers(prev => prev.filter(id => id !== peerId))
         delete peersRef.current[peerId]
         delete channelsRef.current[peerId]
-    }
+    }
+
     const handleMessage = useCallback((raw, fromId) => {
         try {
-            const msg = JSON.parse(raw)
+            const msg = JSON.parse(raw)
+
             if (msg.targetId && msg.targetId !== socketRef.current?.id) {
                 const relayChannel = channelsRef.current[msg.targetId]
                 if (relayChannel?.readyState === 'open') {
@@ -62,15 +68,18 @@ export function useMesh(roomId) {
             if (msg.priority === 'delete-message') {
                 setMessages(prev => prev.filter(m => m.id !== msg.content))
                 return
-            }
+            }
+
             updateMessages(prev => [...prev, { ...msg, fromId, receivedAt: Date.now() }])
         } catch (err) {
             console.error('Failed to parse mesh message:', err)
         }
-    }, [updateMessages])
+    }, [updateMessages])
+
     const createPeerConnection = useCallback((peerId, isInitiator) => {
         const pc = new RTCPeerConnection(ICE_SERVERS)
-        peersRef.current[peerId] = pc
+        peersRef.current[peerId] = pc
+
         pc.onicecandidate = ({ candidate }) => {
             if (candidate) {
                 socketRef.current?.emit('relay-signal', {
@@ -86,7 +95,8 @@ export function useMesh(roomId) {
             if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
                 removePeer(peerId)
             }
-        }
+        }
+
         if (isInitiator) {
             const channel = pc.createDataChannel('mesh')
             channelsRef.current[peerId] = channel
@@ -95,7 +105,8 @@ export function useMesh(roomId) {
                 addPeer(peerId)
             }
             channel.onmessage = (e) => handleMessage(e.data, peerId)
-            channel.onclose = () => removePeer(peerId)
+            channel.onclose = () => removePeer(peerId)
+
             pc.createOffer()
                 .then(offer => pc.setLocalDescription(offer))
                 .then(() => {
@@ -104,7 +115,8 @@ export function useMesh(roomId) {
                         signal: { type: 'offer', sdp: pc.localDescription },
                     })
                 })
-        } else {
+        } else {
+
             pc.ondatachannel = ({ channel }) => {
                 channelsRef.current[peerId] = channel
                 channel.onopen = () => {
@@ -117,9 +129,11 @@ export function useMesh(roomId) {
         }
 
         return pc
-    }, [handleMessage])
+    }, [handleMessage])
+
     useEffect(() => {
-        if (!roomId) return
+        if (!roomId) return
+
         const socket = io(SIGNAL_SERVER, {
             reconnection: true,
             reconnectionAttempts: Infinity,
@@ -145,15 +159,18 @@ export function useMesh(roomId) {
         socket.on('connect_error', (error) => {
             console.error('Signaling connection error:', error.message)
             setMeshReady(false)
-        })
+        })
+
         socket.on('existing-peers', (peerIds) => {
             console.log('Existing peers in room:', peerIds)
             peerIds.forEach(peerId => createPeerConnection(peerId, true))
-        })
+        })
+
         socket.on('peer-joined', (peerId) => {
             console.log('New peer joined:', peerId)
             createPeerConnection(peerId, false)
-        })
+        })
+
         socket.on('signal', async ({ fromId, signal }) => {
             let pc = peersRef.current[fromId]
             if (!pc) pc = createPeerConnection(fromId, false)
@@ -171,7 +188,8 @@ export function useMesh(roomId) {
             } else if (signal.type === 'candidate') {
                 await pc.addIceCandidate(new RTCIceCandidate(signal.candidate))
             }
-        })
+        })
+
         socket.on('peer-left', (peerId) => {
             console.log('Peer left:', peerId)
             peersRef.current[peerId]?.close()
@@ -181,7 +199,8 @@ export function useMesh(roomId) {
         socket.on('disconnect', () => {
             console.log('Disconnected from signaling server')
             setMeshReady(false)
-        })
+        })
+
         return () => {
             Object.values(peersRef.current).forEach(pc => pc.close())
             peersRef.current = {}
@@ -190,7 +209,8 @@ export function useMesh(roomId) {
             setMeshReady(false)
             setConnectedPeers([])
         }
-    }, [roomId, createPeerConnection])
+    }, [roomId, createPeerConnection])
+
     const sendMessage = useCallback((content, priority = 'normal') => {
         const msg = {
             id: crypto.randomUUID(),
@@ -207,7 +227,8 @@ export function useMesh(roomId) {
                 channel.send(raw)
                 sent++
             }
-        })
+        })
+
         if (priority !== 'delete-message') {
             updateMessages(prev => [...prev, { ...msg, fromId: 'me', receivedAt: Date.now() }])
         }
@@ -231,7 +252,7 @@ export function useMesh(roomId) {
                 const updated = JSON.parse(cached).filter(m => m.id !== msgId)
                 localStorage.setItem(`emermesh_history_${roomId}`, JSON.stringify(updated))
             }
-        } catch (e) {}
+        } catch (e) { }
     }, [roomId])
 
     return {
