@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMeshContext } from '../mesh/MeshContext'
-import { Map, ShieldAlert, Navigation, MapPin, Trash2 } from 'lucide-react'
+import { Map, ShieldAlert, Navigation, Trash2 } from 'lucide-react'
 import MapNavigation from '../../components/MapNavigation'
 
 export default function ZonesPage() {

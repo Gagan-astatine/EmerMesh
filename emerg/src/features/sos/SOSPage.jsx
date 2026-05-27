@@ -327,12 +327,6 @@ const navigateBtn = {
     cursor: 'pointer',
 }
 
-const form = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    width: '100%',
-}
 
 const input = {
     background: 'var(--bg-dark)',
@@ -347,21 +341,6 @@ const input = {
     transition: 'border-color 0.2s',
 }
 
-const button = {
-    background: 'transparent',
-    color: 'var(--danger)',
-    border: '1px solid var(--danger)',
-    padding: '16px',
-    borderRadius: 'var(--border-radius-pill)',
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-}
 
 const statusMsg = {
     padding: '12px',

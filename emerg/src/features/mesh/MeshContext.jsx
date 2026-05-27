@@ -266,7 +266,8 @@ export function MeshProvider({ children }) {
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [roomId, user]) // Removed mesh.addHistoricalMessages to fix exhaustive-deps warning
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roomId, user])
 
     const getLocationWithTimeout = (timeoutMs = 5000) => {
         return new Promise((resolve) => {
