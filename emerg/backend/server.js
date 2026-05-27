@@ -15,34 +15,22 @@ const io = new Server(server, {
 });
 
 app.use(cors());
-app.use(express.json());
-
-// Health check
-app.get("/health", (req, res) => res.json({ status: "ok" }));
-
-// --- Signaling logic (Phase 2 will expand this) ---
+app.use(express.json());
+app.get("/health", (req, res) => res.json({ status: "ok" }));
 const rooms = new Map(); // roomId -> Set of socket IDs
 
 io.on("connection", (socket) => {
-    console.log("Peer connected:", socket.id);
-
-    // A device announces itself to a disaster "room" (geo-based or manual)
+    console.log("Peer connected:", socket.id);
     socket.on("join-room", (roomId) => {
         socket.join(roomId);
         if (!rooms.has(roomId)) rooms.set(roomId, new Set());
-        rooms.get(roomId).add(socket.id);
-
-        // Tell this peer who else is in the room
+        rooms.get(roomId).add(socket.id);
         const peers = [...rooms.get(roomId)].filter((id) => id !== socket.id);
-        socket.emit("existing-peers", peers);
-
-        // Tell everyone else a new peer joined
+        socket.emit("existing-peers", peers);
         socket.to(roomId).emit("peer-joined", socket.id);
 
         console.log(`Socket ${socket.id} joined room ${roomId}`);
-    });
-
-    // Relay WebRTC signaling messages between peers
+    });
     socket.on("relay-signal", ({ targetId, signal }) => {
         io.to(targetId).emit("signal", { fromId: socket.id, signal });
     });

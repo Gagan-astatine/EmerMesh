@@ -1,13 +1,34 @@
+:root {
+  --bg-dark: #151515;
+  --bg-card: #1C1C1C;
+  --bg-card-hover: #222222;
+  --text-primary: #F0F0F0;
+  --text-secondary: #8E8E8E;
+  --accent-gold: #E2AD61;
+  --accent-gold-hover: #CC9C57;
+  --accent-glow: rgba(226, 173, 97, 0.1);
+  --danger: #E25D61;
+  --danger-glow: rgba(226, 93, 97, 0.1);
+  --info: #61A5E2;
+  --border-subtle: #262626;
+  --border-radius-pill: 9999px;
+  --border-radius-card: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
