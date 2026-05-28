@@ -293,7 +293,7 @@ export function MeshProvider({ children }) {
                         resolve(null)
                     }
                 },
-                { enableHighAccuracy: true, maximumAge: 0 }
+                { enableHighAccuracy: false, maximumAge: 30000, timeout: timeoutMs }
             )
         })
     }

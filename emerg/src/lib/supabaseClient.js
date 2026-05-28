@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL.startsWith('http')
-  ? process.env.REACT_APP_SUPABASE_URL
-  : `https://${process.env.REACT_APP_SUPABASE_URL}.supabase.co`
+const rawUrl = process.env.REACT_APP_SUPABASE_URL || ''
+const supabaseUrl = rawUrl.startsWith('http')
+  ? rawUrl
+  : (rawUrl ? `https://${rawUrl}.supabase.co` : 'https://placeholder.supabase.co')
 
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
