@@ -1,10 +1,12 @@
-require('dotenv').config({ path: 'c:/Users/ravit/Desktop/EmerMesh/emerg/.env' });
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL.startsWith('http')
-  ? process.env.REACT_APP_SUPABASE_URL
-  : `https://${process.env.REACT_APP_SUPABASE_URL}.supabase.co`;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+const rawUrl = process.env.REACT_APP_SUPABASE_URL || '';
+const supabaseUrl = rawUrl.startsWith('http')
+  ? rawUrl
+  : (rawUrl ? `https://${rawUrl}.supabase.co` : 'https://placeholder.supabase.co');
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function fetchMessages() {

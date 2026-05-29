@@ -127,9 +127,19 @@ export default function DashboardPage() {
                                             try {
                                                 const data = JSON.parse(msg.content)
                                                 return (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <ShieldAlert size={16} color="var(--accent-gold)" />
-                                                        <span>{data.type} ({data.severity}): {data.description}</span>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <ShieldAlert size={16} color="var(--accent-gold)" />
+                                                            <span>{data.type} ({data.severity}): {data.description}</span>
+                                                        </div>
+                                                        {data.lat && data.lng && (
+                                                            <button 
+                                                                style={styles.navigateBtn} 
+                                                                onClick={() => setNavTarget({ lat: data.lat, lng: data.lng })}
+                                                            >
+                                                                <Navigation size={14} /> Navigate to Target
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 )
                                             } catch (e) { return msg.content }
