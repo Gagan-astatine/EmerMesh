@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Siren, Navigation, Trash2 } from 'lucide-react'
+import { Siren, Navigation, Trash2, Loader, Phone, Shield, ShieldAlert } from 'lucide-react'
 import { useMeshContext } from '../mesh/MeshContext'
 import MapNavigation from '../../components/MapNavigation'
 
@@ -9,6 +9,9 @@ export default function SOSPage() {
     const [status, setStatus] = useState('')
     const [navTarget, setNavTarget] = useState(null)
     const [customText, setCustomText] = useState('')
+    const [contacts, setContacts] = useState(null)
+    const [contactsError, setContactsError] = useState(null)
+    const [fetchingContacts, setFetchingContacts] = useState(false)
 
     const quickMessages = [
         'Medical Emergency!',
@@ -17,9 +20,40 @@ export default function SOSPage() {
         'Need Evacuation!'
     ]
 
+    const cleanPhoneNumber = (phone) => {
+        if (!phone) return ''
+        return phone.replace(/[^\d+]/g, '')
+    }
+
     const handleSOS = async (content) => {
         setSending(true)
+        setFetchingContacts(true)
         setStatus('')
+        setContacts(null)
+        setContactsError(null)
+
+        let position = null
+        try {
+            position = await new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation is not supported by your browser'))
+                    return
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                    (err) => reject(err),
+                    { enableHighAccuracy: true, timeout: 8000 }
+                )
+            })
+        } catch (locErr) {
+            console.warn("Location fetch failed:", locErr)
+            setContactsError(
+                locErr.code === 1 
+                ? "Location permission denied. Showing national helplines." 
+                : "Unable to retrieve GPS coordinates. Showing national helplines."
+            )
+        }
+
         try {
             await sendSOS(content)
             setStatus('SOS broadcasted successfully over mesh!')
@@ -27,6 +61,38 @@ export default function SOSPage() {
             setStatus(`Failed to send: ${error.message}`)
         } finally {
             setSending(false)
+        }
+
+        try {
+            let url = 'http://localhost:4000/api/nearby-emergencies'
+            if (position) {
+                url += `?lat=${position.lat}&lng=${position.lng}`
+            }
+            const response = await fetch(url)
+            if (!response.ok) {
+                throw new Error("Failed to fetch emergency contacts")
+            }
+            const data = await response.json()
+            setContacts(data)
+        } catch (apiErr) {
+            console.error("API error fetching emergency contacts:", apiErr)
+            setContactsError(prev => prev ? prev + " (API error, standard helplines loaded)" : "Network/API issue. Showing standard helplines.")
+            setContacts({
+                police: {
+                    name: "National Police Helpline",
+                    phone: "100",
+                    address: "Immediate Police Response",
+                    distance: "National"
+                },
+                ambulance: {
+                    name: "National Medical Emergency (Ambulance)",
+                    phone: "108",
+                    address: "Immediate Medical Dispatch",
+                    distance: "National"
+                }
+            })
+        } finally {
+            setFetchingContacts(false)
             setTimeout(() => setStatus(''), 5000)
         }
     }
@@ -73,6 +139,89 @@ export default function SOSPage() {
                         </div>
                     )}
                 </div>
+
+                {/* Nearby Emergency Services Section */}
+                {(fetchingContacts || contacts || contactsError) && (
+                    <div style={servicesCard}>
+                        <h3 style={servicesTitle}>Nearby Emergency Services</h3>
+                        
+                        {fetchingContacts && (
+                            <div style={loadingContainer}>
+                                <Loader className="spin" size={28} color="var(--accent-gold)" />
+                                <p style={loadingText}>Finding nearest emergency services...</p>
+                            </div>
+                        )}
+
+                        {contactsError && (
+                            <div style={contactsErrorText}>
+                                <ShieldAlert size={16} style={{ flexShrink: 0 }} />
+                                <span>{contactsError}</span>
+                            </div>
+                        )}
+
+                        {contacts && (
+                            <div style={contactsList}>
+                                {contacts.police && (
+                                    <div style={contactItem}>
+                                        <div style={contactHeader}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <Shield size={16} color="var(--info)" />
+                                                <span style={contactBadgePolice}>POLICE STATION</span>
+                                            </div>
+                                            {contacts.police.distance && (
+                                                <span style={contactDistance}>{contacts.police.distance}</span>
+                                            )}
+                                        </div>
+                                        <h4 style={contactName}>{contacts.police.name}</h4>
+                                        <p style={contactAddress}>{contacts.police.address}</p>
+                                        {contacts.police.note && (
+                                            <p style={contactNote}>{contacts.police.note}</p>
+                                        )}
+                                        {contacts.police.phone ? (
+                                            <a 
+                                                href={`tel:${cleanPhoneNumber(contacts.police.phone)}`} 
+                                                style={callButtonPolice}
+                                            >
+                                                <Phone size={14} /> Call: {contacts.police.phone}
+                                            </a>
+                                        ) : (
+                                            <p style={noPhoneText}>No contact number listed</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {contacts.ambulance && (
+                                    <div style={contactItem}>
+                                        <div style={contactHeader}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <Siren size={16} color="var(--danger)" />
+                                                <span style={contactBadgeAmbulance}>AMBULANCE & MEDICAL</span>
+                                            </div>
+                                            {contacts.ambulance.distance && (
+                                                <span style={contactDistance}>{contacts.ambulance.distance}</span>
+                                            )}
+                                        </div>
+                                        <h4 style={contactName}>{contacts.ambulance.name}</h4>
+                                        <p style={contactAddress}>{contacts.ambulance.address}</p>
+                                        {contacts.ambulance.note && (
+                                            <p style={contactNote}>{contacts.ambulance.note}</p>
+                                        )}
+                                        {contacts.ambulance.phone ? (
+                                            <a 
+                                                href={`tel:${cleanPhoneNumber(contacts.ambulance.phone)}`} 
+                                                style={callButtonAmbulance}
+                                            >
+                                                <Phone size={14} /> Call: {contacts.ambulance.phone}
+                                            </a>
+                                        ) : (
+                                            <p style={noPhoneText}>No contact number listed</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {}
                 <div style={quickActions}>
@@ -351,4 +500,158 @@ const statusMsg = {
     fontWeight: '600',
     textAlign: 'center',
     width: '100%',
+}
+
+const servicesCard = {
+    background: 'var(--bg-card)',
+    borderRadius: '16px',
+    padding: '24px',
+    border: '1px solid var(--border-subtle)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    width: '100%',
+}
+
+const servicesTitle = {
+    fontSize: '18px',
+    margin: 0,
+    fontWeight: '600',
+    color: 'var(--text-primary)',
+    borderBottom: '1px solid var(--border-subtle)',
+    paddingBottom: '12px',
+}
+
+const loadingContainer = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '24px 0',
+    gap: '12px',
+}
+
+const loadingText = {
+    margin: 0,
+    color: 'var(--text-secondary)',
+    fontSize: '14px',
+}
+
+const contactsErrorText = {
+    margin: 0,
+    color: 'var(--accent-gold)',
+    fontSize: '13px',
+    background: 'var(--accent-glow)',
+    border: '1px solid var(--accent-gold)',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    fontWeight: '500',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+}
+
+const contactsList = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+}
+
+const contactItem = {
+    background: 'var(--bg-dark)',
+    borderRadius: '12px',
+    padding: '16px',
+    border: '1px solid var(--border-subtle)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+}
+
+const contactHeader = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+}
+
+const contactBadgePolice = {
+    color: 'var(--info)',
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '0.5px',
+}
+
+const contactBadgeAmbulance = {
+    color: 'var(--danger)',
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '0.5px',
+}
+
+const contactDistance = {
+    fontSize: '12px',
+    color: 'var(--text-secondary)',
+    fontWeight: '500',
+}
+
+const contactName = {
+    fontSize: '16px',
+    margin: 0,
+    fontWeight: '600',
+    color: 'var(--text-primary)',
+}
+
+const contactAddress = {
+    fontSize: '13px',
+    margin: 0,
+    color: 'var(--text-secondary)',
+    lineHeight: '1.4',
+}
+
+const contactNote = {
+    fontSize: '11px',
+    margin: 0,
+    color: 'var(--accent-gold)',
+    fontStyle: 'italic',
+    lineHeight: '1.4',
+}
+
+const callButtonPolice = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    background: 'var(--info)',
+    color: '#fff',
+    textDecoration: 'none',
+    padding: '12px',
+    borderRadius: '8px',
+    fontWeight: '600',
+    fontSize: '14px',
+    marginTop: '4px',
+    transition: 'background 0.2s',
+    cursor: 'pointer',
+}
+
+const callButtonAmbulance = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    background: 'var(--danger)',
+    color: '#fff',
+    textDecoration: 'none',
+    padding: '12px',
+    borderRadius: '8px',
+    fontWeight: '600',
+    fontSize: '14px',
+    marginTop: '4px',
+    transition: 'background 0.2s',
+    cursor: 'pointer',
+}
+
+const noPhoneText = {
+    fontSize: '13px',
+    color: 'var(--text-secondary)',
+    fontStyle: 'italic',
+    margin: '4px 0 0 0',
 }
